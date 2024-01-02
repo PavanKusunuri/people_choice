@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'artist_category'
 ]
 
 MIDDLEWARE = [
@@ -77,7 +78,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'people_choice',
-        'USER': 'Pavan',
+        'USER': 'postgres',
         'PASSWORD': 'React@1609',
         'HOST': '127.0.0.1',
         'PORT': '5432',
