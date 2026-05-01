@@ -1,12 +1,11 @@
-# CineVault - Complete Setup Guide
+# CineVault - Local Development Setup
 
 ## Overview
 
-CineVault is a production-grade IMDb-style entertainment database platform with a comprehensive tech stack:
+CineVault is a production-grade IMDb-style entertainment database platform. This project is configured for **local development only** (no Docker).
 
 **Backend:** Node.js + Express + MongoDB + Redis  
-**Frontend:** React 18 + TypeScript + Tailwind CSS + TanStack Query  
-**Infrastructure:** Docker Compose + Vite
+**Frontend:** React 18 + TypeScript + Tailwind CSS + TanStack Query
 
 ## Project Structure
 
@@ -52,61 +51,71 @@ people_choice/
 
 ## Prerequisites
 
-- **Docker** and **Docker Compose** (recommended for full stack)
-- **Node.js 20+** and **npm 10+** (for local development)
+- **Node.js 20+** and **npm 10+**
+- **MongoDB 7.0+** (local installation or MongoDB Atlas)
+- **Redis 7+** (local installation)
 - **Git**
 
-## Quick Start with Docker Compose
+## Quick Start (Local Development)
 
-### 1. Configure Environment Variables
+### 1. Install MongoDB & Redis
 
-Edit `.env.local` and set your actual credentials:
-
+**Option A: Using Homebrew (macOS)**
 ```bash
-cp .env.local .env.local
-# Edit .env.local with your Cloudinary, Google OAuth, SendGrid keys
+# MongoDB
+brew install mongodb-community
+brew services start mongodb-community
+
+# Redis
+brew install redis
+brew services start redis
 ```
 
-### 2. Start All Services
+**Option B: Using Windows**
+- Download MongoDB: https://www.mongodb.com/try/download/community
+- Download Redis from Windows Subsystem for Linux (WSL2) or use:
+  ```powershell
+  # If you have Chocolatey
+  choco install mongodb redis
+  ```
 
+**Option C: Manual MongoDB & Redis**
 ```bash
-docker-compose up -d
+# MongoDB - download and run from https://www.mongodb.com/try/download/community
+# Redis - download and run from https://redis.io/download
+
+# Or use managed services:
+# - MongoDB Atlas: https://www.mongodb.com/cloud/atlas
+# - Redis Cloud: https://redis.com/try-free/
 ```
 
-This starts:
-- **MongoDB** (port 27017)
-- **Redis** (port 6379)
-- **Backend API** (port 5000) - auto-reloads on code changes
-- **Frontend** (port 5173) - Vite dev server with HMR
-
-### 3. Access the Application
-
-- **Frontend:** http://localhost:5173
-- **API Health:** http://localhost:5000/health
-- **API Docs:** http://localhost:5000/api/docs (coming soon)
-
-### 4. View Logs
+### 2. Configure Environment Variables
 
 ```bash
-# All services
-docker-compose logs -f
-
-# Specific service
-docker-compose logs -f backend
-docker-compose logs -f frontend
-docker-compose logs -f mongodb
-docker-compose logs -f redis
+# Copy .env.local to both backend and frontend
+cp .env.local backend/.env
+cp .env.local frontend/people_choice_frontend/.env
 ```
 
-### 5. Stop Services
+Edit `backend/.env` (critical settings):
 
-```bash
-docker-compose down
+```env
+PORT=5000
+NODE_ENV=development
+MONGO_URI=mongodb://localhost:27017/cinevault
+REDIS_URL=redis://localhost:6379
+JWT_ACCESS_SECRET=your_super_secret_access_key_12345
+JWT_REFRESH_SECRET=your_super_secret_refresh_key_12345
+CLIENT_URL=http://localhost:5173
+ALLOWED_ORIGINS=http://localhost:5173
 ```
 
-## Local Development (Without Docker)
+If using **MongoDB Atlas** (cloud):
+```env
+MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/cinevault
+```
 
-### Backend Setup
+### 3. Start Backend Server
 
 ```bash
 cd backend
@@ -114,23 +123,16 @@ cd backend
 # Install dependencies
 npm install
 
-# Create .env file (copy from .env.example)
-cp .env.example .env
-
-# Make sure MongoDB and Redis are running:
-# Option 1: Use Docker for just DB services
-docker run -d -p 27017:27017 -e MONGO_INITDB_ROOT_USERNAME=admin -e MONGO_INITDB_ROOT_PASSWORD=admin123 mongo:7.0-alpine
-docker run -d -p 6379:6379 redis:7-alpine
-
-# Or use your local MongoDB/Redis instances and update .env
-
-# Start backend dev server (with auto-reload)
+# Start with auto-reload (uses nodemon)
 npm run dev
 
 # Backend runs on http://localhost:5000
+# Health check: http://localhost:5000/health
 ```
 
-### Frontend Setup
+### 4. Start Frontend Dev Server
+
+In a **new terminal**:
 
 ```bash
 cd frontend/people_choice_frontend
@@ -138,11 +140,45 @@ cd frontend/people_choice_frontend
 # Install dependencies
 npm install
 
-# Start Vite dev server
+# Start with HMR
 npm run dev
 
 # Frontend runs on http://localhost:5173
 ```
+
+### 5. Verify Everything Works
+
+**Test Auth Flow:**
+1. Go to http://localhost:5173/register
+2. Create an account (check browser DevTools → Storage → Cookies for `refreshToken`)
+3. Go to http://localhost:5173/login
+4. Login with your account
+5. Open Zustand DevTools to see auth store with access token
+
+**Test API:**
+```bash
+# Register
+curl -X POST http://localhost:5000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "Password123!"
+  }'
+
+# Login
+curl -X POST http://localhost:5000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john@example.com",
+    "password": "Password123!"
+  }'
+```
+
+## Prerequisites (Removed)
+
+- ~~Docker~~ (not needed)
+- ~~Docker Compose~~ (not needed)
 
 ## Authentication Flow
 
@@ -315,15 +351,6 @@ cd frontend/people_choice_frontend
 npm test
 ```
 
-### Database Migrations
-
-After adding a new Mongoose model or changing indexes:
-
-```bash
-# Re-run createIndexes on models (Mongoose does this automatically on model creation)
-# For manual index management, add a migration script later
-```
-
 ### Linting & Formatting
 
 ```bash
@@ -345,32 +372,157 @@ cd frontend/people_choice_frontend
 npm run build  # Creates dist/ folder
 
 # Backend doesn't need build (Node runs .js directly)
+# Just install dependencies in production: npm ci
+```
+
+## Environment Files
+
+### Backend (.env)
+
+```env
+# Required
+PORT=5000
+NODE_ENV=development
+MONGO_URI=mongodb://localhost:27017/cinevault
+REDIS_URL=redis://localhost:6379
+JWT_ACCESS_SECRET=your_secret_key_min_32_chars
+JWT_REFRESH_SECRET=your_secret_key_min_32_chars
+
+# Optional (for features coming next)
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+GOOGLE_CLIENT_ID=your_client_id
+GOOGLE_CLIENT_SECRET=your_client_secret
+SENDGRID_API_KEY=your_api_key
+FROM_EMAIL=noreply@cinevault.com
+
+# Frontend
+CLIENT_URL=http://localhost:5173
+ALLOWED_ORIGINS=http://localhost:5173
+```
+
+### Frontend (.env)
+
+```env
+VITE_API_BASE_URL=http://localhost:5000
 ```
 
 ## Common Issues & Troubleshooting
 
-### "Cannot GET /api/v1/auth/register"
+### "Cannot connect to MongoDB"
 
-**Cause:** Route not found  
-**Fix:** Make sure all route files are imported in `app.js`
+**Cause:** MongoDB not running  
+**Fix:**
+```bash
+# Check MongoDB status
+mongosh  # If this works, MongoDB is running
+
+# If not running:
+# macOS: brew services start mongodb-community
+# Windows: Start MongoDB service or run mongod.exe
+# Cloud: Ensure MongoDB Atlas IP whitelist includes your IP
+```
+
+### "Cannot connect to Redis"
+
+**Cause:** Redis not running  
+**Fix:**
+```bash
+# Check Redis status
+redis-cli ping  # Should return PONG
+
+# If not running:
+# macOS: brew services start redis
+# Windows: redis-server.exe or use WSL
+# Cloud: Ensure Redis Cloud firewall allows your IP
+```
 
 ### "MongooseError: operation `users.insertOne()` buffering timed out"
 
-**Cause:** MongoDB not connecting  
-**Fix:** Check MONGO_URI, ensure MongoDB is running, check Docker network
+**Cause:** MongoDB taking too long to respond or auth failure  
+**Fix:**
+```bash
+# Verify connection string in .env
+MONGO_URI=mongodb://localhost:27017/cinevault
+
+# For MongoDB Atlas:
+MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/cinevault
+
+# Test connection:
+mongosh "mongodb://localhost:27017/cinevault"
+```
 
 ### "CORS error when frontend calls API"
 
 **Cause:** Frontend origin not in ALLOWED_ORIGINS  
-**Fix:** Update ALLOWED_ORIGINS in .env and restart backend
+**Fix:** Update `backend/.env`:
+```env
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+```
+
+Then restart backend: `npm run dev`
+
+### "Port 5000 already in use"
+
+**Cause:** Another process using the port  
+**Fix:**
+```bash
+# macOS/Linux
+lsof -i :5000  # Find process
+kill -9 <PID>
+
+# Windows
+netstat -ano | findstr :5000
+taskkill /PID <PID> /F
+
+# Or change port in .env:
+PORT=5001
+```
+
+### "Port 5173 already in use"
+
+**Cause:** Another Vite dev server running  
+**Fix:** Vite will auto-increment to 5174 or 5175, or kill the process using 5173
 
 ### Tokens not persisting on page refresh
 
-**By design!** Access tokens are stored only in React memory. On page refresh:
-1. Token is lost (expected)
+**By design!** This is the secure pattern:
+1. Token is lost on refresh (expected)
 2. App makes automatic `/auth/refresh` call on mount
 3. Refresh cookie is sent automatically → new access token issued
-4. If refresh fails, user is logged out
+4. If refresh fails, user is logged out (expected)
+
+### "Module not found" errors
+
+**Cause:** Dependencies not installed  
+**Fix:**
+```bash
+# Backend
+cd backend && npm install
+
+# Frontend
+cd frontend/people_choice_frontend && npm install
+```
+
+### "Cannot find module 'dotenv'"
+
+**Cause:** .env file not loaded or missing dependencies  
+**Fix:**
+```bash
+cd backend
+npm install
+# Restart: npm run dev
+```
+
+### "Cannot GET /api/v1/auth/register"
+
+**Cause:** Route not registered in app.js  
+**Fix:** Check that authRoutes are imported in `app.js`:
+```javascript
+import authRoutes from './routes/authRoutes.js';
+app.use('/api/v1/auth', authRoutes);
+```
 
 This is the secure pattern.
 
@@ -384,7 +536,25 @@ This is the secure pattern.
 6. **Implement cron jobs** (trending scores, cache cleanup)
 7. **Create admin panel**
 8. **Write integration tests**
-9. **Deploy to production** (AWS, Heroku, DigitalOcean, etc.)
+9. **Deploy to production**
+
+## Production Deployment
+
+For production, you'll need:
+
+- **Node.js hosting:** Vercel, Heroku, Railway, AWS EC2, DigitalOcean
+- **Database:** MongoDB Atlas or self-hosted MongoDB
+- **Cache:** Redis Cloud or self-hosted Redis
+- **Images:** Cloudinary CDN
+- **Frontend:** Vercel, Netlify, AWS S3 + CloudFront
+
+Example deployment with Railway.app:
+```bash
+# Push to GitHub
+# Connect repository to Railway
+# Set environment variables in Railway dashboard
+# Deploy with one click
+```
 
 ## Contributing
 

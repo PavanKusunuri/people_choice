@@ -1,4 +1,36 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# Build outputs
+/backend/dist
+/backend/build
+/frontend/people_choice_frontend/dist
+/frontend/people_choice_frontend/build
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+/logs
+*.log
+
+# Backend
 /backend/Lib/
 /backend/Scripts/
 /backend/backend/backend/__pycache__
+/backend/pyvenv.cfg
 **/__pycache__
